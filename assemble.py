@@ -70,24 +70,39 @@ SELECT = {
 
 import os
 import settings
+import datetime as dt
 import pandas as pd
 
 def concatenate(prefix="Acquisition"):
+    start = dt.datetime.now()
+    chunksize = 100000
+    imported_row_count = 0
+
     files = os.listdir(settings.DATA_DIR)
     full = []
     for f in files:
         if not f.startswith(prefix):
             continue
 
-        for chunk in pd.read_csv(os.path.join(settings.DATA_DIR, f), sep = '|', header = None, names = HEADERS[prefix], index_col = False, low_memory = False, chunksize = 500000):
+        for chunk in pd.read_csv(os.path.join(settings.DATA_DIR, f),
+                                    sep = '|', header = None,
+                                    names = HEADERS[prefix],
+                                    index_col = False,
+                                    low_memory = False,
+                                    chunksize = chunksize):
             data = chunk
             data = data[SELECT[prefix]]
+            data_size = len(data)
+            imported_row_count += data_size
             full.append(data)
+            elapsed_time = (dt.datetime.now() - start).seconds
+            print('{} seconds: completed {} rows : total rows {}'.format(elapsed_time, data_size, imported_row_count))
 
     full = pd.concat(full, axis = 0)
 
     full.to_csv(os.path.join(settings.PROCESSED_DIR, "{}.txt".format(prefix)), sep = "|", header = SELECT[prefix], index = False)
+    print('{} seconds: function concatenate complete'.format((dt.datetime.now() - start).seconds))
 
 if __name__ == "__main__":
     concatenate("Acquisition")
-    concatenate("Performance")
+    #concatenate("Performance")
